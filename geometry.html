@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Mock Test — Banking Exams</title>
+<style>
+:root{
+  --primary:#1e3e8e;
+  --accent:#142c66;
+  --good:#c7ffd1;
+  --bad:#ffd1d1;
+  --correct-bg:#c7ffd1;
+  --wrong-bg:#ffd1d1;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;color:#111}
+.header{padding:14px;text-align:center;color:#fff;background:linear-gradient(90deg,var(--primary),var(--accent));font-size:18px}
+.subheader{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;border-bottom:1px solid #eef2f6}
+.timer{font-weight:700;color:var(--primary)}
+.container{padding:14px;padding-bottom:110px;max-width:900px;margin:auto;}
+.question-box{background:#fff;border-radius:12px;padding:18px;box-shadow:0 6px 18px rgba(16,24,40,0.05);margin-bottom:12px}
+.qtext{font-size:16px;margin-bottom:12px}
+.options .opt{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;border:1px solid #e6eef8;margin-top:8px;background:#fff;cursor:pointer}
+.options .opt input{transform:scale(1.2)}
+.options .opt.correct{background:var(--correct-bg);border-color:green}
+.options .opt.wrong{background:var(--wrong-bg);border-color:red}
+.controls{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:space-between}
+.btn{padding:10px 14px;border-radius:8px;border:none;font-weight:600;cursor:pointer}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-ghost{background:#fff;border:1px solid #d1d6df;color:#333}
+.submit-btn{background:#0f9d58;color:#fff;width:100%;padding:12px;border-radius:10px;border:none;margin-top:12px;font-weight:700}
+.open-nav-btn{position:fixed;right:18px;top:86px;background:var(--primary);color:#fff;border:none;padding:10px 12px;border-radius:999px;box-shadow:0 6px 16px rgba(0,0,0,0.12);cursor:pointer;z-index:99}
+#sideNav{height:100%;width:0;position:fixed;top:0;right:0;background:#fff;z-index:1200;overflow-x:hidden;transition:0.35s;padding-top:60px;box-shadow:-6px 0 20px rgba(0,0,0,0.12)}
+.side-close{position:absolute;top:12px;right:16px;font-size:20px;cursor:pointer}
+.nav-list{padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.nav-item{padding:10px;border-radius:8px;text-align:center;background:#f1f5f9;cursor:pointer;font-weight:700}
+.nav-item.correct{background:var(--good)}
+.nav-item.wrong{background:var(--wrong-bg)}
+.nav-item.not-answered{background:#e0e0e0}
+.result-box{background:#fff;padding:15px;border-radius:10px;box-shadow:0 6px 18px rgba(16,24,40,0.05);margin-bottom:12px}
+.review-item{background:#fff;padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(16,24,40,0.05);margin-bottom:12px}
+.correct{color:green;font-weight:700}
+.wrong{color:red;font-weight:700}
+.muted{color:#6b7280}
+@media(max-width:480px){.qtext{font-size:15px}.open-nav-btn{top:70px}}
+</style>
+</head>
+<body>
+
+<div class="header">Banking Exams — Mock Test</div>
+
+<div class="subheader">
+  <div style="display:flex;gap:12px;align-items:center">
+    <div style="font-weight:700">Test: <span id="testTitle">—</span></div>
+    <div class="muted" id="qCount">Q0</div>
+  </div>
+  <div class="timer" id="timer">00:00</div>
+</div>
+
+<button class="open-nav-btn" onclick="openNav()" title="Open question navigator">☰</button>
+
+<!-- Side Navigation -->
+<div id="sideNav">
+  <div class="side-close" onclick="closeNav()">✕</div>
+  <div style="padding:12px">
+    <div style="font-weight:700;margin-bottom:8px">Questions</div>
+    <div id="navList" class="nav-list"></div>
+  </div>
+</div>
+
+<!-- Test Container -->
+<div class="container" id="testArea" style="display:none;">
+  <div class="question-box" id="questionBox"></div>
+  <div class="controls">
+    <button class="btn btn-ghost" id="prevBtn" onclick="prevQ()">← Previous</button>
+    <button class="btn btn-primary" id="nextBtn" onclick="nextQ()">Next →</button>
+  </div>
+  <button class="submit-btn" id="submitBtn" onclick="submitTest(false)">Submit Test</button>
+</div>
+
+<!-- Review Area -->
+<div class="container" id="reviewArea" style="display:none;">
+  <div class="result-box">
+    <div id="resultMessage" style="font-size:18px;font-weight:700"></div>
+    <div id="scoreText" style="margin-top:6px"></div>
+  </div>
+  <h3 style="margin-left:2px">Review Answers</h3>
+  <div id="reviewList"></div>
+</div>
+
+<script>
+let questions=[], current=0, answers={}, totalTime=0, timerRef=null, submitted=false, testId="test1", testTitle="Sample Test";
+const sampleQuestions = {
+  "test1":[
+    {"q":"The distance between points (1,2) and (4,6) is:", "A":"5","B":"6","C":"7","D":"10","answer":"A"},
+{"q":"The distance between points (-2,-3) and (1,1) is:", "A":"4","B":"5","C":"6","D":"7","answer":"B"},
+{"q":"The section formula divides line joining (x1, y1) and (x2, y2) internally in ratio m:n as:", "A":"$(\\frac{mx_2+nx_1}{m+n}, \\frac{my_2+ny_1}{m+n})$","B":"$(\\frac{mx_1+nx_2}{m+n}, \\frac{my_1+ny_2}{m+n})$","C":"$(\\frac{x_1+x_2}{2}, \\frac{y_1+y_2}{2})$","D":"$(x_1, y_1)$","answer":"B"},
+{"q":"Midpoint of (2,3) and (8,7) is:", "A":"(5,5)","B":"(4,5)","C":"(5,4)","D":"(6,5)","answer":"A"},
+{"q":"Point dividing line joining (1,1) and (5,7) in ratio 1:2 internally is:", "A":"(3,5)","B":"(2,3)","C":"(4,5)","D":"(3,4)","answer":"A"},
+{"q":"Distance of point (3,4) from origin is:", "A":"5","B":"6","C":"7","D":"8","answer":"A"},
+{"q":"Distance of point (-1,2) from point (3,-2) is:", "A":"5","B":"4","C":"6","D":"8","answer":"A"},
+{"q":"The centroid of triangle with vertices (0,0), (6,0), (0,6) is:", "A":"(2,2)","B":"(3,3)","C":"(1,1)","D":"(0,0)","answer":"B"},
+{"q":"The centroid of triangle (1,2), (3,4), (5,6) is:", "A":"(3,4)","B":"(2,3)","C":"(3,3)","D":"(4,5)","answer":"A"},
+{"q":"The area of triangle with vertices (0,0), (4,0), (0,3) is:", "A":"6","B":"7","C":"5","D":"8","answer":"A"},
+{"q":"Area of triangle with vertices (1,1), (4,5), (6,2) is:", "A":"8","B":"9","C":"7","D":"6","answer":"A"},
+{"q":"Points (1,2), (3,4), (5,6) are:", "A":"Collinear","B":"Non-collinear","C":"Form triangle","D":"Cannot say","answer":"A"},
+{"q":"Points (0,0), (2,3), (3,6) are collinear?", "A":"Yes","B":"No","C":"Cannot say","D":"Sometimes","answer":"A"},
+{"q":"If three points are collinear, area of triangle formed is:", "A":"0","B":"1","C":"2","D":"Cannot say","answer":"A"},
+{"q":"Area of triangle using vertices (x1,y1),(x2,y2),(x3,y3) is:", "A":"$\\frac{1}{2}|x_1(y_2-y_3)+x_2(y_3-y_1)+x_3(y_1-y_2)|$","B":"$\\frac{1}{2}|x_1+x_2+x_3|$","C":"$\\frac{1}{2}|y_1+y_2+y_3|$","D":"$x_1y_1 + x_2y_2 + x_3y_3$","answer":"A"},
+{"q":"Point dividing line joining (2,3) and (8,7) in ratio 2:1 internally is:", "A":"(4,5)","B":"(6,5)","C":"(5,6)","D":"(5,5)","answer":"B"},
+{"q":"Point dividing line joining (1,2) and (7,8) externally in ratio 2:1 is:", "A":"(10,11)","B":"(5,4)","C":"(4,5)","D":"(6,7)","answer":"A"},
+{"q":"Distance between points (1,2) and (4,6) is:", "A":"5","B":"6","C":"7","D":"10","answer":"A"},
+{"q":"Midpoint of points (-1,-2) and (3,4) is:", "A":"(1,1)","B":"(0,0)","C":"(2,3)","D":"(1,-1)","answer":"A"},
+{"q":"Distance between points (2,-3) and (-2,1) is:", "A":"4√2","B":"5","C":"6","D":"√20","answer":"A"},
+{"q":"The coordinates of centroid of triangle (0,0),(6,0),(0,8) is:", "A":"(2,8/3)","B":"(3,4)","C":"(2,3)","D":"(1,2)","answer":"A"},
+{"q":"Area of triangle with vertices (0,0),(5,0),(0,4) is:", "A":"10","B":"5","C":"20","D":"6","answer":"A"},
+{"q":"Area of triangle with vertices (1,1),(4,5),(7,2) is:", "A":"9","B":"8","C":"10","D":"7","answer":"A"},
+{"q":"Points (0,0),(2,3),(4,6) are collinear?", "A":"Yes","B":"No","C":"Cannot say","D":"Sometimes","answer":"A"},
+{"q":"If three points are collinear, slope of lines joining pairs of points are:", "A":"Equal","B":"Different","C":"Zero","D":"Undefined","answer":"A"},
+{"q":"Distance between points (-3,4) and (0,0) is:", "A":"5","B":"7","C":"6","D":"4","answer":"A"},
+{"q":"Midpoint of points (1,4) and (5,8) is:", "A":"(3,6)","B":"(2,5)","C":"(4,7)","D":"(1,1)","answer":"A"},
+{"q":"Section formula divides line joining points (x1,y1) and (x2,y2) externally in ratio m:n as:", "A":"$(\\frac{mx_2-nx_1}{m-n}, \\frac{my_2-ny_1}{m-n})$","B":"$(\\frac{mx_1-nx_2}{m-n}, \\frac{my_1-ny_2}{m-n})$","C":"$(\\frac{mx_1+nx_2}{m+n}, \\frac{my_1+ny_2}{m+n})$","D":"$(x_1,y_1)$","answer":"A"},
+{"q":"Distance between (2,3) and (5,7) is:", "A":"5","B":"4","C":"6","D":"√25","answer":"A"},
+{"q":"Midpoint of (3,4) and (7,8) is:", "A":"(5,6)","B":"(4,5)","C":"(6,7)","D":"(3,4)","answer":"A"},
+{"q":"Centroid of triangle (1,2),(3,4),(5,6) is:", "A":"(3,4)","B":"(2,3)","C":"(4,5)","D":"(1,2)","answer":"A"},
+{"q":"Area of triangle (0,0),(3,0),(0,4) is:", "A":"6","B":"5","C":"7","D":"4","answer":"A"},
+{"q":"Area of triangle (1,1),(4,5),(6,2) is:", "A":"8","B":"9","C":"10","D":"7","answer":"A"},
+{"q":"Points (0,0),(1,1),(2,2) are collinear?", "A":"Yes","B":"No","C":"Cannot say","D":"Sometimes","answer":"A"},
+{"q":"Distance of point (3,4) from x-axis is:", "A":"4","B":"3","C":"5","D":"2","answer":"A"},
+{"q":"Distance of point (3,4) from y-axis is:", "A":"3","B":"4","C":"5","D":"2","answer":"A"},
+{"q":"The line joining (1,2) and (3,6) has slope:", "A":"2","B":"1","C":"-1","D":"3","answer":"A"},
+{"q":"Slope of line perpendicular to y = 2x + 3 is:", "A":"-1/2","B":"2","C":"1/2","D":"-2","answer":"A"},
+{"q":"Equation of line passing through (2,3) parallel to y = x + 1 is:", "A":"y = x + 1","B":"y = x + 2","C":"y = x + 3","D":"y = 2x + 1","answer":"B"},
+{"q":"Equation of line passing through (1,2) perpendicular to y = 3x + 5 is:", "A":"y -2 = -1/3(x-1)","B":"y -2 = 3(x-1)","C":"y = 3x +2","D":"y = -3x +2","answer":"A"},
+{"q":"Distance between (0,0) and (-3,-4) is:", "A":"5","B":"7","C":"6","D":"1","answer":"A"},
+{"q":"Centroid of triangle (0,0),(6,0),(0,6) is:", "A":"(2,2)","B":"(3,3)","C":"(1,1)","D":"(0,0)","answer":"B"},
+{"q":"Area of triangle (0,0),(5,0),(0,4) is:", "A":"10","B":"6","C":"5","D":"8","answer":"A"},
+{"q":"Points (1,2),(2,3),(3,4) are collinear?", "A":"Yes","B":"No","C":"Cannot say","D":"Sometimes","answer":"A"},
+    {"q":"What is 15 + 27?","A":"35","B":"42","C":"50","D":"40","answer":"C"},
+    {"q":"Which is the smallest prime number?","A":"2","B":"3","C":"5","D":"1","answer":"A"},
+    {"q":"RBI controls ______ in India.","A":"Stock Market","B":"Money Supply","C":"Agriculture","D":"Railways","answer":"B"}
+  ]
+};
+function $(id){return document.getElementById(id);}
+(function initFromURL(){
+  const params=new URLSearchParams(location.search);
+  if(params.has('test')) testId=params.get('test');
+  if(params.has('title')) testTitle=params.get('title');
+})();
+$('testTitle').innerText=testTitle;
+
+function loadQuestions(){
+  fetch('questions.json').then(r=>r.ok?r.json():Promise.reject()).then(data=>{
+    if(!data[testId]) throw new Error('Test id not found in JSON');
+    questions=data[testId]; startEngine();
+  }).catch(_=>{questions=sampleQuestions[testId]||sampleQuestions['test1'];startEngine();});
+}
+
+function startEngine(){
+  totalTime = questions.length * 60;
+  generateNav();
+  renderQuestion();
+  $('testArea').style.display='block';
+  startTimer();
+}
+
+function startTimer(){
+  if(timerRef) clearInterval(timerRef);
+  updateTimerDisplay();
+  timerRef=setInterval(()=>{
+    totalTime--; updateTimerDisplay();
+    if(totalTime<=0){ clearInterval(timerRef); timerRef=null; submitTest(true); }
+  },1000);
+}
+
+function updateTimerDisplay(){ 
+  let m=Math.floor(totalTime/60); let s=totalTime%60; s=s<10?'0'+s:s; 
+  $('timer').innerText = m+':'+s; 
+}
+
+function openNav(){ $('sideNav').style.width='320px'; }
+function closeNav(){ $('sideNav').style.width='0'; }
+
+function generateNav(){
+  const nav=$('navList'); nav.innerHTML='';
+  for(let i=0;i<questions.length;i++){
+    const d=document.createElement('div'); d.id='nav'+i; d.className='nav-item not-answered'; d.innerText=(i+1); d.onclick=()=>jumpTo(i);
+    nav.appendChild(d);
+  }
+}
+
+function updateNavColors(){
+  for(let i=0;i<questions.length;i++){
+    const q=questions[i]; const user=answers[i]||null;
+    const el=$('nav'+i); if(!el) continue;
+    if(!user) el.className='nav-item not-answered';
+    else if(user===q.answer) el.className='nav-item correct';
+    else el.className='nav-item wrong';
+  }
+}
+
+function renderQuestion(){
+  const q = questions[current];
+  const container = $('questionBox'); container.innerHTML = '';
+
+  const qDiv = document.createElement('div'); qDiv.className='qtext'; qDiv.innerText=`${current+1}. ${q.q}`;
+  container.appendChild(qDiv);
+
+  const optsDiv = document.createElement('div'); optsDiv.className='options';
+  ['A','B','C','D'].forEach(k=>{
+    if(!q[k]) return;
+    const opt = document.createElement('label'); opt.className='opt';
+    const r = document.createElement('input'); r.type='radio'; r.name='opt'; r.value=k;
+    r.onchange = function(){ if(!submitted){ answers[current]=this.value; updateNavColors(); } };
+    if(answers[current]===k) r.checked=true;
+    if(submitted){
+      if(k===q.answer) opt.classList.add('correct');
+      if(answers[current]===k && answers[current]!==q.answer) opt.classList.add('wrong');
+      r.disabled=true;
+    }
+    opt.appendChild(r); opt.appendChild(document.createTextNode(k+'. '+q[k]));
+    optsDiv.appendChild(opt);
+  });
+  container.appendChild(optsDiv);
+
+  $('prevBtn').style.display = current===0?'none':'inline-block';
+  $('nextBtn').style.display = current===questions.length-1?'none':'inline-block';
+  $('submitBtn').style.display = current===questions.length-1?'block':'none';
+
+  $('qCount').innerText=`Q ${current+1}/${questions.length}`;
+  updateNavColors();
+}
+
+function nextQ(){
+  if(!submitted){
+    const sel=document.querySelector("input[name='opt']:checked");
+    if(sel) answers[current]=sel.value;
+  }
+  if(current<questions.length-1){ current++; renderQuestion(); }
+}
+
+function prevQ(){
+  if(current>0){ current--; renderQuestion(); }
+}
+
+function jumpTo(i){ if(i<0||i>=questions.length) return; current=i; renderQuestion(); closeNav(); }
+
+function submitTest(auto=false){
+  if(submitted) return; submitted=true;
+  if(timerRef){ clearInterval(timerRef); timerRef=null; }
+  updateNavColors();
+  renderQuestion(); // to apply highlighting for current question
+
+  $('reviewArea').style.display='block';
+  const reviewList=$('reviewList'); reviewList.innerHTML='';
+  let score=0;
+  questions.forEach((q,i)=>{
+    const user=answers[i]||'Not Attempted';
+    if(user===q.answer) score++;
+    const item=document.createElement('div'); item.className='review-item';
+    item.innerHTML=`<div style="font-weight:700">Q${i+1}: ${q.q}</div>
+      <div style="margin-top:6px">Your Answer: <span class="${user===q.answer?'correct':(user==='Not Attempted'?'muted':'wrong')}">${user}</span></div>
+      <div>Correct Answer: <span class="correct">${q.answer}</span></div>`;
+    reviewList.appendChild(item);
+  });
+  $('resultMessage').innerText = auto ? "Time's up — Test auto-submitted." : "Test submitted successfully.";
+  $('scoreText').innerText = `Score: ${score} / ${questions.length} (${Math.round(score/questions.length*100)}%)`;
+}
+
+loadQuestions();
+</script>
+</body>
+</html>
